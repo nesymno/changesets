@@ -7,7 +7,7 @@ test:
     go test ./... -v
 
 release:
-    changesets release
+    go run main.go release
     git add .
     git commit -m "Release $(changesets next)"
     git tag "$(changesets next)"
