@@ -5,3 +5,10 @@ run *ARGS:
 # Run all tests
 test:
     go test ./... -v
+
+release:
+    changesets release
+    git add .
+    git commit -m "Release $(changesets next)"
+    git tag "$(changesets next)"
+    git push origin main --tags
