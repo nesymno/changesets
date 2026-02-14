@@ -1,6 +1,6 @@
 # changesets
 
-A simple, lightweight CLI tool for managing changelogs with [semantic versioning](https://semver.org/), inspired by [@changesets/changesets](https://github.com/changesets/changesets) - but built for Go projects or in cases when you don't want anything related to NodeJS (I saying about `package.json`).
+A simple, lightweight CLI tool for managing changelogs with [semantic versioning](https://semver.org/), inspired by [@changesets/changesets](https://github.com/changesets/changesets) - but built for Go projects.
 
 Instead of manually editing a `CHANGELOG.md` and figuring out version bumps, you describe each change as a small markdown file (a "changeset"). When you're ready to release, the tool determines the correct version bump, generates a structured changelog, and cleans up after itself.
 
@@ -186,7 +186,7 @@ Contributions are welcome! Here's how to get started:
 2. Create a feature branch (`git checkout -b my-feature`)
 3. Make your changes
 4. Add a changeset describing your change (`go run main.go add`)
-5. Run tests (`go test ./... -v`)
+5. Run tests (`just test`)
 6. Commit and push your branch
 7. Open a Pull Request
 
