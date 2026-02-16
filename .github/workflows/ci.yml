@@ -19,10 +19,16 @@ jobs:
     container:
       image: golang:1.25-alpine
     steps:
-      - uses: actions/checkout@v4
-      - run: apk add --no-cache git curl bash gcc musl-dev gnupg
-      - run: CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-      - uses: codecov/codecov-action@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: apk add --no-cache git curl bash gcc musl-dev gnupg
+
+      - name: Run tests
+        run: CGO_ENABLED=1 go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
         with:
-          files: ./coverage.out
-          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
