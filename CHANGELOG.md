@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.0 - 2026-02-17
+
+### Minor Changes
+
+- 11d68b6: Simplify project structure
+
 ## v0.0.2 - 2026-02-14
 
 ### Patch Changes
