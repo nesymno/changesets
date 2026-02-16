@@ -153,14 +153,14 @@ Changeset files should be committed alongside the code they describe. This way, 
 
 ```bash
 # Generate changelog and bump version
-changesets release
+version=$(changesets release)
 
 # Commit the release artifacts
 git add .
-git commit -m "Release $(changesets next)"
+git commit -m "Release ${version}"
 
 # Tag and push
-git tag "$(changesets next)"
+git tag "${version}"
 git push origin main --tags
 ```
 
@@ -185,7 +185,7 @@ Contributions are welcome! Here's how to get started:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b my-feature`)
 3. Make your changes
-4. Add a changeset describing your change (`go run main.go add`)
+4. Add a changeset describing your change (`go run . add`)
 5. Run tests (`just test`)
 6. Commit and push your branch
 7. Open a Pull Request

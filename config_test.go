@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"os"
@@ -10,14 +10,14 @@ func TestSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
-	cfg := &Config{Version: "v1.2.3"}
-	if err := Save(path, cfg); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	cfg := &config{Version: "v1.2.3"}
+	if err := saveConfig(path, cfg); err != nil {
+		t.Fatalf("saveConfig failed: %v", err)
 	}
 
-	loaded, err := Load(path)
+	loaded, err := loadConfig(path)
 	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+		t.Fatalf("loadConfig failed: %v", err)
 	}
 
 	if loaded.Version != "v1.2.3" {
@@ -33,14 +33,14 @@ func TestLoadInvalidJSON(t *testing.T) {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
-	_, err := Load(path)
+	_, err := loadConfig(path)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON, got nil")
 	}
 }
 
 func TestLoadMissing(t *testing.T) {
-	_, err := Load("/nonexistent/config.json")
+	_, err := loadConfig("/nonexistent/config.json")
 	if err == nil {
 		t.Fatal("expected error for missing file, got nil")
 	}
@@ -55,9 +55,9 @@ func TestModuleName(t *testing.T) {
 		t.Fatalf("failed to write go.mod: %v", err)
 	}
 
-	name, err := ModuleName(dir)
+	name, err := moduleName(dir)
 	if err != nil {
-		t.Fatalf("ModuleName failed: %v", err)
+		t.Fatalf("moduleName failed: %v", err)
 	}
 
 	if name != "my-tool" {
@@ -68,7 +68,7 @@ func TestModuleName(t *testing.T) {
 func TestModuleNameMissing(t *testing.T) {
 	dir := t.TempDir()
 
-	_, err := ModuleName(dir)
+	_, err := moduleName(dir)
 	if err == nil {
 		t.Fatal("expected error for missing go.mod, got nil")
 	}
@@ -82,25 +82,25 @@ func TestModuleNameNoDirective(t *testing.T) {
 		t.Fatalf("failed to write go.mod: %v", err)
 	}
 
-	_, err := ModuleName(dir)
+	_, err := moduleName(dir)
 	if err == nil {
 		t.Fatal("expected error for go.mod without module directive, got nil")
 	}
 }
 
-func TestResolvePaths(t *testing.T) {
-	paths := ResolvePaths("/project")
+func TestNewPaths(t *testing.T) {
+	p := newPaths("/project")
 
-	if paths.Root != "/project" {
-		t.Errorf("expected root /project, got %s", paths.Root)
+	if p.root != "/project" {
+		t.Errorf("expected root /project, got %s", p.root)
 	}
-	if paths.Changesets != "/project/.changesets" {
-		t.Errorf("expected changesets /project/.changesets, got %s", paths.Changesets)
+	if p.changesets != "/project/.changesets" {
+		t.Errorf("expected changesets /project/.changesets, got %s", p.changesets)
 	}
-	if paths.Config != "/project/.changesets/config.json" {
-		t.Errorf("expected config /project/.changesets/config.json, got %s", paths.Config)
+	if p.config != "/project/.changesets/config.json" {
+		t.Errorf("expected config /project/.changesets/config.json, got %s", p.config)
 	}
-	if paths.Changes != "/project/.changesets/changes" {
-		t.Errorf("expected changes /project/.changesets/changes, got %s", paths.Changes)
+	if p.changes != "/project/.changesets/changes" {
+		t.Errorf("expected changes /project/.changesets/changes, got %s", p.changes)
 	}
 }

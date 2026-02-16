@@ -9,12 +9,9 @@ import (
 	"time"
 
 	semver "github.com/Masterminds/semver/v3"
-
-	"github.com/nesymno/changesets/internal/changeset"
-	"github.com/nesymno/changesets/internal/config"
-	"github.com/nesymno/changesets/internal/git"
-	"github.com/nesymno/changesets/internal/words"
 )
+
+var version = "dev"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -22,18 +19,32 @@ func main() {
 		os.Exit(1)
 	}
 
-	var err error
 	switch os.Args[1] {
-	case "init":
-		err = cmdInit()
-	case "add":
-		err = cmdAdd()
-	case "next":
-		err = cmdNext()
-	case "release":
-		err = cmdRelease()
 	case "help", "--help", "-h":
 		printUsage()
+		return
+	case "version", "--version", "-v":
+		fmt.Println(version)
+		return
+	}
+
+	p, err := resolvePaths()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		os.Exit(1)
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	switch os.Args[1] {
+	case "init":
+		err = cmdInit(p, scanner)
+	case "add":
+		err = cmdAdd(p, scanner)
+	case "next":
+		err = cmdNext(p)
+	case "release":
+		err = cmdRelease(p)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		printUsage()
@@ -56,41 +67,47 @@ Commands:
   init        Initialize .changesets directory
   add         Create a new changeset
   next        Calculate and print the next version
-  release     Bump version, update CHANGELOG.md, and clean up changesets`)
+  release     Bump version, update CHANGELOG.md, and clean up changesets
+  version     Print the CLI version`)
+}
+
+func resolvePaths() (paths, error) {
+	root, err := findRoot()
+	if err != nil {
+		return paths{}, err
+	}
+
+	return newPaths(root), nil
 }
 
 // cmdInit creates the .changesets directory structure.
-func cmdInit() error {
-	root, err := config.Root()
-	if err != nil {
-		return err
-	}
-
-	paths := config.ResolvePaths(root)
-
+func cmdInit(p paths, scanner *bufio.Scanner) error {
 	// Check if .changesets already exists
-	if _, err := os.Stat(paths.Changesets); err == nil {
+	if _, err := os.Stat(p.changesets); err == nil {
 		fmt.Print(".changesets already exists. Recreate? (y/n): ")
-		answer := readLine()
-		if !strings.EqualFold(strings.TrimSpace(answer), "y") {
+		if !scanner.Scan() {
+			return fmt.Errorf("no input received")
+		}
+		answer := strings.TrimSpace(scanner.Text())
+		if !strings.EqualFold(answer, "y") {
 			fmt.Println("Aborted.")
 			return nil
 		}
 
 		// Remove existing directory
-		if err := os.RemoveAll(paths.Changesets); err != nil {
+		if err := os.RemoveAll(p.changesets); err != nil {
 			return fmt.Errorf("failed to remove existing .changesets: %w", err)
 		}
 	}
 
 	// Create directories
-	if err := os.MkdirAll(paths.Changes, 0755); err != nil {
+	if err := os.MkdirAll(p.changes, 0755); err != nil {
 		return fmt.Errorf("failed to create changes directory: %w", err)
 	}
 
 	// Write config.json
-	cfg := &config.Config{Version: "v0.0.0"}
-	if err := config.Save(paths.Config, cfg); err != nil {
+	cfg := &config{Version: "v0.0.0"}
+	if err := saveConfig(p.config, cfg); err != nil {
 		return err
 	}
 
@@ -101,18 +118,18 @@ This directory is used by [go-changesets](https://github.com/nesymno/go-changese
 
 ## How to add a changeset
 
-Run ` + "`go-changesets changeset`" + ` to create a new changeset file describing your change.
+Run ` + "`changesets add`" + ` to create a new changeset file describing your change.
 
 ## How to release
 
-Run ` + "`go-changesets release`" + ` to bump the version, update CHANGELOG.md, and clean up changeset files.
+Run ` + "`changesets release`" + ` to bump the version, update CHANGELOG.md, and clean up changeset files.
 `
-	if err := os.WriteFile(paths.Readme, []byte(readme), 0644); err != nil {
+	if err := os.WriteFile(p.readme, []byte(readme), 0644); err != nil {
 		return fmt.Errorf("failed to write README.md: %w", err)
 	}
 
 	// Write .gitkeep
-	if err := os.WriteFile(paths.Gitkeep, []byte(""), 0644); err != nil {
+	if err := os.WriteFile(p.gitkeep, []byte(""), 0644); err != nil {
 		return fmt.Errorf("failed to write .gitkeep: %w", err)
 	}
 
@@ -121,23 +138,11 @@ Run ` + "`go-changesets release`" + ` to bump the version, update CHANGELOG.md, 
 }
 
 // cmdAdd interactively creates a new changeset file.
-func cmdAdd() error {
-	root, err := config.Root()
+func cmdAdd(p paths, scanner *bufio.Scanner) error {
+	repoName, err := moduleName(p.root)
 	if err != nil {
 		return err
 	}
-
-	paths := config.ResolvePaths(root)
-	if err := ensureChangesetsExist(paths); err != nil {
-		return err
-	}
-
-	repoName, err := config.ModuleName(root)
-	if err != nil {
-		return err
-	}
-
-	scanner := bufio.NewScanner(os.Stdin)
 
 	// 1. Select bump type
 	fmt.Println("What kind of change is this?")
@@ -146,18 +151,18 @@ func cmdAdd() error {
 	fmt.Println("  3) major")
 	fmt.Print("Select [1/2/3]: ")
 
-	var bump changeset.BumpType
+	var bump bumpType
 	if !scanner.Scan() {
 		return fmt.Errorf("no input received")
 	}
 	choice := strings.TrimSpace(scanner.Text())
 	switch choice {
 	case "1", "patch":
-		bump = changeset.Patch
+		bump = patch
 	case "2", "minor":
-		bump = changeset.Minor
+		bump = minor
 	case "3", "major":
-		bump = changeset.Major
+		bump = major
 	default:
 		return fmt.Errorf("invalid selection: %q", choice)
 	}
@@ -173,7 +178,7 @@ func cmdAdd() error {
 	}
 
 	// 3. Preview and confirm
-	content := changeset.ChangesetContent(repoName, bump, summary)
+	content := changesetContent(repoName, bump, summary)
 	fmt.Println()
 	fmt.Println("--- Preview ---")
 	fmt.Println()
@@ -193,13 +198,13 @@ func cmdAdd() error {
 	}
 
 	// 4. Generate slug and write file
-	slug, err := words.Generate(paths.Changes)
+	slug, err := generateSlug(p.changes)
 	if err != nil {
 		return err
 	}
 
-	filename := words.SlugToFilename(slug)
-	filePath := filepath.Join(paths.Changes, filename)
+	filename := slugToFilename(slug)
+	filePath := filepath.Join(p.changes, filename)
 
 	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write changeset file: %w", err)
@@ -210,18 +215,8 @@ func cmdAdd() error {
 }
 
 // cmdNext calculates and prints the next version.
-func cmdNext() error {
-	root, err := config.Root()
-	if err != nil {
-		return err
-	}
-
-	paths := config.ResolvePaths(root)
-	if err := ensureChangesetsExist(paths); err != nil {
-		return err
-	}
-
-	nextVer, _, err := calculateNextVersion(paths)
+func cmdNext(p paths) error {
+	nextVer, _, _, err := calculateNextVersion(p)
 	if err != nil {
 		return err
 	}
@@ -231,47 +226,37 @@ func cmdNext() error {
 }
 
 // cmdRelease bumps the version, updates CHANGELOG.md, and cleans up changesets.
-func cmdRelease() error {
-	root, err := config.Root()
+func cmdRelease(p paths) error {
+	if err := ensureChangesetsExist(p); err != nil {
+		return err
+	}
+
+	nextVerStr, changes, cfg, err := calculateNextVersion(p)
 	if err != nil {
 		return err
 	}
 
-	paths := config.ResolvePaths(root)
-	if err := ensureChangesetsExist(paths); err != nil {
-		return err
-	}
-
-	nextVerStr, changesets, err := calculateNextVersion(paths)
-	if err != nil {
-		return err
-	}
-
-	if len(changesets) == 0 {
+	if len(changes) == 0 {
 		return fmt.Errorf("no changesets found, nothing to release")
 	}
 
 	// Build changelog section
-	changelogSection := buildChangelogSection(nextVerStr, changesets)
+	changelogSection := buildChangelogSection(nextVerStr, changes)
 
 	// Update CHANGELOG.md
-	changelogPath := filepath.Join(root, "CHANGELOG.md")
+	changelogPath := filepath.Join(p.root, "CHANGELOG.md")
 	if err := prependChangelog(changelogPath, changelogSection); err != nil {
 		return err
 	}
 
 	// Update config.json
-	cfg, err := config.Load(paths.Config)
-	if err != nil {
-		return err
-	}
 	cfg.Version = nextVerStr
-	if err := config.Save(paths.Config, cfg); err != nil {
+	if err := saveConfig(p.config, cfg); err != nil {
 		return err
 	}
 
 	// Clean up changeset files
-	if err := cleanupChanges(paths.Changes); err != nil {
+	if err := cleanupChanges(p.changes); err != nil {
 		return err
 	}
 
@@ -280,83 +265,82 @@ func cmdRelease() error {
 }
 
 // calculateNextVersion reads the current version and all changesets, then computes the next version.
-func calculateNextVersion(paths config.Paths) (string, []*changeset.Changeset, error) {
-	cfg, err := config.Load(paths.Config)
+func calculateNextVersion(p paths) (string, []*changeset, *config, error) {
+	cfg, err := loadConfig(p.config)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
-	changesets, err := changeset.ListChangesets(paths.Changes)
+	changes, err := listChangesets(p.changes)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
-	if len(changesets) == 0 {
-		fmt.Fprintf(os.Stderr, "no changesets found\n")
-		return cfg.Version, nil, nil
+	if len(changes) == 0 {
+		return cfg.Version, nil, cfg, nil
 	}
 
 	// Parse current version
 	currentVersion := strings.TrimPrefix(cfg.Version, "v")
 	ver, err := semver.NewVersion(currentVersion)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to parse current version %q: %w", cfg.Version, err)
+		return "", nil, nil, fmt.Errorf("failed to parse current version %q: %w", cfg.Version, err)
 	}
 
 	// Determine highest bump
-	bump := changeset.HighestBump(changesets)
+	bump := highestBump(changes)
 
 	// Apply bump
 	var next semver.Version
 	switch bump {
-	case changeset.Major:
+	case major:
 		next = ver.IncMajor()
-	case changeset.Minor:
+	case minor:
 		next = ver.IncMinor()
-	case changeset.Patch:
+	case patch:
 		next = ver.IncPatch()
 	}
 
 	nextVerStr := "v" + next.String()
-	return nextVerStr, changesets, nil
+	return nextVerStr, changes, cfg, nil
 }
 
 // buildChangelogSection produces the markdown section for a release.
-func buildChangelogSection(version string, changesets []*changeset.Changeset) string {
+func buildChangelogSection(ver string, changes []*changeset) string {
 	var sb strings.Builder
 
 	date := time.Now().Format("2006-01-02")
-	sb.WriteString(fmt.Sprintf("## %s - %s\n", version, date))
+	sb.WriteString(fmt.Sprintf("## %s - %s\n", ver, date))
 
 	// Group by bump type
-	groups := map[changeset.BumpType][]*changeset.Changeset{
-		changeset.Major: {},
-		changeset.Minor: {},
-		changeset.Patch: {},
+	groups := map[bumpType][]*changeset{
+		major: {},
+		minor: {},
+		patch: {},
 	}
-	for _, cs := range changesets {
-		groups[cs.Bump] = append(groups[cs.Bump], cs)
+	for _, cs := range changes {
+		groups[cs.bump] = append(groups[cs.bump], cs)
 	}
 
 	// Write each group in order: major, minor, patch
-	writeGroup := func(title string, items []*changeset.Changeset) {
+	writeGroup := func(title string, items []*changeset) {
 		if len(items) == 0 {
 			return
 		}
 		sb.WriteString(fmt.Sprintf("\n### %s\n\n", title))
 		for _, cs := range items {
-			sha := git.GetFileCommitSHA(cs.Filepath)
+			sha, _ := getFileCommitSHA(cs.filepath)
 			if sha != "" {
-				sb.WriteString(fmt.Sprintf("- %s: %s\n", sha, cs.Summary))
+				sb.WriteString(fmt.Sprintf("- %s: %s\n", sha, cs.summary))
 			} else {
-				sb.WriteString(fmt.Sprintf("- %s\n", cs.Summary))
+				sb.WriteString(fmt.Sprintf("- %s\n", cs.summary))
 			}
 		}
 	}
 
-	writeGroup("Major Changes", groups[changeset.Major])
-	writeGroup("Minor Changes", groups[changeset.Minor])
-	writeGroup("Patch Changes", groups[changeset.Patch])
+	writeGroup("Major Changes", groups[major])
+	writeGroup("Minor Changes", groups[minor])
+	writeGroup("Patch Changes", groups[patch])
 
 	return sb.String()
 }
@@ -378,7 +362,6 @@ func prependChangelog(path string, section string) error {
 			if idx >= 0 {
 				header := existing[:idx+1]
 				rest := existing[idx+1:]
-				// Trim leading newlines from rest
 				rest = strings.TrimLeft(rest, "\n")
 				content = header + "\n" + section + "\n" + rest
 			} else {
@@ -397,8 +380,8 @@ func prependChangelog(path string, section string) error {
 }
 
 // cleanupChanges removes all .md files from the changes directory, keeping .gitkeep.
-func cleanupChanges(changesDir string) error {
-	entries, err := os.ReadDir(changesDir)
+func cleanupChanges(dir string) error {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("failed to read changes directory: %w", err)
 	}
@@ -410,7 +393,7 @@ func cleanupChanges(changesDir string) error {
 		if !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		path := filepath.Join(changesDir, entry.Name())
+		path := filepath.Join(dir, entry.Name())
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("failed to remove %s: %w", entry.Name(), err)
 		}
@@ -420,18 +403,9 @@ func cleanupChanges(changesDir string) error {
 }
 
 // ensureChangesetsExist checks that the .changesets directory exists.
-func ensureChangesetsExist(paths config.Paths) error {
-	if _, err := os.Stat(paths.Changesets); os.IsNotExist(err) {
-		return fmt.Errorf(".changesets directory not found. Run 'go-changesets init' first")
+func ensureChangesetsExist(p paths) error {
+	if _, err := os.Stat(p.changesets); os.IsNotExist(err) {
+		return fmt.Errorf(".changesets directory not found. Run 'changesets init' first")
 	}
 	return nil
-}
-
-// readLine reads a single line from stdin.
-func readLine() string {
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		return scanner.Text()
-	}
-	return ""
 }

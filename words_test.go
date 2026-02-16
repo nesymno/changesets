@@ -1,4 +1,4 @@
-package words
+package main
 
 import (
 	"os"
@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-func TestGenerate(t *testing.T) {
+func TestGenerateSlug(t *testing.T) {
 	dir := t.TempDir()
 
-	slug, err := Generate(dir)
+	slug, err := generateSlug(dir)
 	if err != nil {
-		t.Fatalf("Generate failed: %v", err)
+		t.Fatalf("generateSlug failed: %v", err)
 	}
 
 	parts := strings.Split(slug, "-")
@@ -20,21 +20,21 @@ func TestGenerate(t *testing.T) {
 		t.Errorf("expected 3 parts in slug, got %d: %q", len(parts), slug)
 	}
 
-	// Verify the file doesn't exist (it shouldn't since Generate only picks a name)
+	// Verify the file doesn't exist (it shouldn't since generateSlug only picks a name)
 	path := filepath.Join(dir, slug+".md")
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("expected file to not exist at %s", path)
 	}
 }
 
-func TestGenerateUniqueness(t *testing.T) {
+func TestGenerateSlugUniqueness(t *testing.T) {
 	dir := t.TempDir()
 
 	seen := make(map[string]bool)
 	for i := 0; i < 50; i++ {
-		slug, err := Generate(dir)
+		slug, err := generateSlug(dir)
 		if err != nil {
-			t.Fatalf("Generate failed on iteration %d: %v", i, err)
+			t.Fatalf("generateSlug failed on iteration %d: %v", i, err)
 		}
 		if seen[slug] {
 			// Collisions are possible but extremely unlikely in 50 iterations
@@ -45,13 +45,13 @@ func TestGenerateUniqueness(t *testing.T) {
 	}
 }
 
-func TestGenerateAvoidsExisting(t *testing.T) {
+func TestGenerateSlugAvoidsExisting(t *testing.T) {
 	dir := t.TempDir()
 
 	// Generate one slug, create the file, then generate another
-	slug1, err := Generate(dir)
+	slug1, err := generateSlug(dir)
 	if err != nil {
-		t.Fatalf("Generate failed: %v", err)
+		t.Fatalf("generateSlug failed: %v", err)
 	}
 
 	// Create a file with that slug
@@ -60,9 +60,9 @@ func TestGenerateAvoidsExisting(t *testing.T) {
 	}
 
 	// Generate another slug - should be different
-	slug2, err := Generate(dir)
+	slug2, err := generateSlug(dir)
 	if err != nil {
-		t.Fatalf("Generate failed: %v", err)
+		t.Fatalf("generateSlug failed: %v", err)
 	}
 
 	if slug1 == slug2 {
@@ -71,13 +71,13 @@ func TestGenerateAvoidsExisting(t *testing.T) {
 }
 
 func TestSlugToFilename(t *testing.T) {
-	if got := SlugToFilename("brave-orange-fox"); got != "brave-orange-fox.md" {
+	if got := slugToFilename("brave-orange-fox"); got != "brave-orange-fox.md" {
 		t.Errorf("expected brave-orange-fox.md, got %s", got)
 	}
 }
 
 func TestFilenameToSlug(t *testing.T) {
-	if got := FilenameToSlug("brave-orange-fox.md"); got != "brave-orange-fox" {
+	if got := filenameToSlug("brave-orange-fox.md"); got != "brave-orange-fox" {
 		t.Errorf("expected brave-orange-fox, got %s", got)
 	}
 }

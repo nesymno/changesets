@@ -1,4 +1,4 @@
-package words
+package main
 
 import (
 	"crypto/rand"
@@ -56,9 +56,9 @@ var nouns = []string{
 	"hops", "ink", "jet", "key", "log",
 }
 
-// Generate creates a random slug in the format "adj-adj-noun".
+// generateSlug creates a random slug in the format "adj-adj-noun".
 // It checks for collisions with existing files in changesDir.
-func Generate(changesDir string) (string, error) {
+func generateSlug(dir string) (string, error) {
 	for attempts := 0; attempts < 100; attempts++ {
 		adj1, err := randomElement(adjectives)
 		if err != nil {
@@ -76,7 +76,7 @@ func Generate(changesDir string) (string, error) {
 		slug := fmt.Sprintf("%s-%s-%s", adj1, adj2, noun)
 		filename := slug + ".md"
 
-		path := filepath.Join(changesDir, filename)
+		path := filepath.Join(dir, filename)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			return slug, nil
 		}
@@ -93,12 +93,12 @@ func randomElement(slice []string) (string, error) {
 	return slice[n.Int64()], nil
 }
 
-// SlugToFilename converts a slug to a markdown filename.
-func SlugToFilename(slug string) string {
+// slugToFilename converts a slug to a markdown filename.
+func slugToFilename(slug string) string {
 	return slug + ".md"
 }
 
-// FilenameToSlug converts a markdown filename back to a slug.
-func FilenameToSlug(filename string) string {
+// filenameToSlug converts a markdown filename back to a slug.
+func filenameToSlug(filename string) string {
 	return strings.TrimSuffix(filename, ".md")
 }

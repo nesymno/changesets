@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"bufio"
@@ -10,31 +10,31 @@ import (
 )
 
 const (
-	ChangesetsDir = ".changesets"
-	ConfigFile    = "config.json"
-	ChangesDir    = "changes"
-	ReadmeFile    = "README.md"
-	GitkeepFile   = ".gitkeep"
+	changesetsDir = ".changesets"
+	configFile    = "config.json"
+	changesDir    = "changes"
+	readmeFile    = "README.md"
+	gitkeepFile   = ".gitkeep"
 )
 
-// Config represents the .changesets/config.json file.
-type Config struct {
+// config represents the .changesets/config.json file.
+type config struct {
 	Version string `json:"version"`
 }
 
-// Paths holds resolved absolute paths for the changesets directory structure.
-type Paths struct {
-	Root       string // project root (where go.mod lives)
-	Changesets string // .changesets/
-	Config     string // .changesets/config.json
-	Changes    string // .changesets/changes/
-	Readme     string // .changesets/README.md
-	Gitkeep    string // .changesets/changes/.gitkeep
+// paths holds resolved absolute paths for the changesets directory structure.
+type paths struct {
+	root       string // project root (where go.mod lives)
+	changesets string // .changesets/
+	config     string // .changesets/config.json
+	changes    string // .changesets/changes/
+	readme     string // .changesets/README.md
+	gitkeep    string // .changesets/changes/.gitkeep
 }
 
-// Root walks up from the current directory to find the project root
+// findRoot walks up from the current directory to find the project root
 // (the directory containing go.mod).
-func Root() (string, error) {
+func findRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
@@ -54,27 +54,27 @@ func Root() (string, error) {
 	}
 }
 
-// ResolvePaths returns all changesets-related paths relative to the given root.
-func ResolvePaths(root string) Paths {
-	cs := filepath.Join(root, ChangesetsDir)
-	return Paths{
-		Root:       root,
-		Changesets: cs,
-		Config:     filepath.Join(cs, ConfigFile),
-		Changes:    filepath.Join(cs, ChangesDir),
-		Readme:     filepath.Join(cs, ReadmeFile),
-		Gitkeep:    filepath.Join(cs, ChangesDir, GitkeepFile),
+// newPaths returns all changesets-related paths relative to the given root.
+func newPaths(root string) paths {
+	cs := filepath.Join(root, changesetsDir)
+	return paths{
+		root:       root,
+		changesets: cs,
+		config:     filepath.Join(cs, configFile),
+		changes:    filepath.Join(cs, changesDir),
+		readme:     filepath.Join(cs, readmeFile),
+		gitkeep:    filepath.Join(cs, changesDir, gitkeepFile),
 	}
 }
 
-// Load reads and parses the config.json file.
-func Load(configPath string) (*Config, error) {
+// loadConfig reads and parses the config.json file.
+func loadConfig(configPath string) (*config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	var cfg Config
+	var cfg config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -82,8 +82,8 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-// Save writes the config back to disk with indentation.
-func Save(configPath string, cfg *Config) error {
+// saveConfig writes the config back to disk with indentation.
+func saveConfig(configPath string, cfg *config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
@@ -98,9 +98,9 @@ func Save(configPath string, cfg *Config) error {
 	return nil
 }
 
-// ModuleName reads go.mod and extracts the last segment of the module path.
+// moduleName reads go.mod and extracts the last segment of the module path.
 // For example, "github.com/nesymno/changesets" returns "changesets".
-func ModuleName(root string) (string, error) {
+func moduleName(root string) (string, error) {
 	f, err := os.Open(filepath.Join(root, "go.mod"))
 	if err != nil {
 		return "", fmt.Errorf("open go.mod: %w", err)
