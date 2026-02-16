@@ -30,7 +30,7 @@ func main() {
 
 	p, err := resolvePaths()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "error: %s\nAre you inside a Go project?\n", err)
 		os.Exit(1)
 	}
 
@@ -139,6 +139,10 @@ Run ` + "`changesets release`" + ` to bump the version, update CHANGELOG.md, and
 
 // cmdAdd interactively creates a new changeset file.
 func cmdAdd(p paths, scanner *bufio.Scanner) error {
+	if err := ensureChangesetsExist(p); err != nil {
+		return err
+	}
+
 	repoName, err := moduleName(p.root)
 	if err != nil {
 		return err
@@ -216,6 +220,10 @@ func cmdAdd(p paths, scanner *bufio.Scanner) error {
 
 // cmdNext calculates and prints the next version.
 func cmdNext(p paths) error {
+	if err := ensureChangesetsExist(p); err != nil {
+		return err
+	}
+
 	nextVer, _, _, err := calculateNextVersion(p)
 	if err != nil {
 		return err

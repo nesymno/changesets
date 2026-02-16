@@ -75,9 +75,3 @@ func TestSlugToFilename(t *testing.T) {
 		t.Errorf("expected brave-orange-fox.md, got %s", got)
 	}
 }
-
-func TestFilenameToSlug(t *testing.T) {
-	if got := filenameToSlug("brave-orange-fox.md"); got != "brave-orange-fox" {
-		t.Errorf("expected brave-orange-fox, got %s", got)
-	}
-}

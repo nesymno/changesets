@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var adjectives = []string{
@@ -96,9 +95,4 @@ func randomElement(slice []string) (string, error) {
 // slugToFilename converts a slug to a markdown filename.
 func slugToFilename(slug string) string {
 	return slug + ".md"
-}
-
-// filenameToSlug converts a markdown filename back to a slug.
-func filenameToSlug(filename string) string {
-	return strings.TrimSuffix(filename, ".md")
 }

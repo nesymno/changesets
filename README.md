@@ -1,5 +1,12 @@
 # changesets
 
+[![Build](https://github.com/nesymno/changesets/actions/workflows/ci.yml/badge.svg)](https://github.com/nesymno/changesets/actions/workflows/ci.yml)
+[![Tests](https://github.com/nesymno/changesets/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/nesymno/changesets/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/nesymno/changesets/branch/main/graph/badge.svg)](https://codecov.io/gh/nesymno/changesets)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nesymno/changesets)](https://goreportcard.com/report/github.com/nesymno/changesets)
+[![License](https://img.shields.io/github/license/nesymno/changesets)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/nesymno/changesets)](https://github.com/nesymno/changesets/releases/latest)
+
 A simple, lightweight CLI tool for managing changelogs with [semantic versioning](https://semver.org/), inspired by [@changesets/changesets](https://github.com/changesets/changesets) - but built for Go projects.
 
 Instead of manually editing a `CHANGELOG.md` and figuring out version bumps, you describe each change as a small markdown file (a "changeset"). When you're ready to release, the tool determines the correct version bump, generates a structured changelog, and cleans up after itself.
