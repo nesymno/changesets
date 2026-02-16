@@ -20,8 +20,8 @@ jobs:
       image: golang:1.25-alpine
     steps:
       - uses: actions/checkout@v4
-      - run: apk add --no-cache git curl bash
-      - run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      - run: apk add --no-cache git curl bash gcc musl-dev
+      - run: CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
       - uses: codecov/codecov-action@v5
         with:
           files: ./coverage.out
