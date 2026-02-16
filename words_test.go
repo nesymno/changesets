@@ -1,11 +1,48 @@
 package main
 
 import (
+	"crypto/rand"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// zeroReader always returns zero bytes (deterministic output for crypto/rand).
+type zeroReader struct{}
+
+func (z zeroReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 0
+	}
+	return len(p), nil
+}
+
+// countingFailReader succeeds for maxReads Read calls, then returns an error.
+type countingFailReader struct {
+	maxReads int
+	count    int
+}
+
+func (r *countingFailReader) Read(p []byte) (int, error) {
+	if r.count >= r.maxReads {
+		return 0, fmt.Errorf("forced reader failure")
+	}
+	r.count++
+	for i := range p {
+		p[i] = 0
+	}
+	return len(p), nil
+}
+
+func withReader(r io.Reader, fn func()) {
+	orig := rand.Reader
+	rand.Reader = r
+	defer func() { rand.Reader = orig }()
+	fn()
+}
 
 func TestGenerateSlug(t *testing.T) {
 	dir := t.TempDir()
@@ -74,4 +111,65 @@ func TestSlugToFilename(t *testing.T) {
 	if got := slugToFilename("brave-orange-fox"); got != "brave-orange-fox.md" {
 		t.Errorf("expected brave-orange-fox.md, got %s", got)
 	}
+}
+
+func TestRandomElementError(t *testing.T) {
+	withReader(&countingFailReader{maxReads: 0}, func() {
+		_, err := randomElement(adjectives)
+		if err == nil {
+			t.Error("expected error with failing reader, got nil")
+		}
+	})
+}
+
+func TestGenerateSlugExhaustion(t *testing.T) {
+	dir := t.TempDir()
+
+	// Use a zero reader so the slug is always the same deterministic value.
+	withReader(zeroReader{}, func() {
+		slug, err := generateSlug(dir)
+		if err != nil {
+			t.Fatalf("first generateSlug failed: %v", err)
+		}
+
+		// Create the file so every subsequent attempt collides.
+		if err := os.WriteFile(filepath.Join(dir, slug+".md"), []byte("taken"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = generateSlug(dir)
+		if err == nil {
+			t.Error("expected error after 100 collision attempts, got nil")
+		}
+	})
+}
+
+func TestGenerateSlugRandomElementFailFirstCall(t *testing.T) {
+	dir := t.TempDir()
+	withReader(&countingFailReader{maxReads: 0}, func() {
+		_, err := generateSlug(dir)
+		if err == nil {
+			t.Error("expected error when first randomElement fails")
+		}
+	})
+}
+
+func TestGenerateSlugRandomElementFailSecondCall(t *testing.T) {
+	dir := t.TempDir()
+	withReader(&countingFailReader{maxReads: 1}, func() {
+		_, err := generateSlug(dir)
+		if err == nil {
+			t.Error("expected error when second randomElement fails")
+		}
+	})
+}
+
+func TestGenerateSlugRandomElementFailThirdCall(t *testing.T) {
+	dir := t.TempDir()
+	withReader(&countingFailReader{maxReads: 2}, func() {
+		_, err := generateSlug(dir)
+		if err == nil {
+			t.Error("expected error when third randomElement fails")
+		}
+	})
 }

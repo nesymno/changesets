@@ -157,3 +157,90 @@ func TestHighestBump(t *testing.T) {
 		}
 	}
 }
+
+func TestParseFileSuccess(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.md")
+
+	content := "---\nmy-repo: patch\n---\n\nFixed a bug"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cs, err := parseFile(path)
+	if err != nil {
+		t.Fatalf("parseFile failed: %v", err)
+	}
+
+	if cs.repoName != "my-repo" {
+		t.Errorf("expected repo name my-repo, got %s", cs.repoName)
+	}
+	if cs.bump != patch {
+		t.Errorf("expected bump patch, got %s", cs.bump)
+	}
+	if cs.summary != "Fixed a bug" {
+		t.Errorf("expected summary 'Fixed a bug', got %q", cs.summary)
+	}
+}
+
+func TestParseFileNotFound(t *testing.T) {
+	_, err := parseFile("/nonexistent/changeset.md")
+	if err == nil {
+		t.Fatal("expected error for missing file, got nil")
+	}
+}
+
+func TestParseInvalidFrontmatterFormat(t *testing.T) {
+	_, err := parseChangeset("---\nnocolonhere\n---\n\nmessage", "test.md")
+	if err == nil {
+		t.Fatal("expected error for frontmatter without colon, got nil")
+	}
+}
+
+func TestListChangesetsInvalidDir(t *testing.T) {
+	_, err := listChangesets("/nonexistent/dir")
+	if err == nil {
+		t.Fatal("expected error for nonexistent directory, got nil")
+	}
+}
+
+func TestListChangesetsWithSubdirectory(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.Mkdir(filepath.Join(dir, "subdir"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	cs1 := "---\nrepo: patch\n---\n\nFix"
+	if err := os.WriteFile(filepath.Join(dir, "one.md"), []byte(cs1), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	changes, err := listChangesets(dir)
+	if err != nil {
+		t.Fatalf("listChangesets failed: %v", err)
+	}
+
+	if len(changes) != 1 {
+		t.Fatalf("expected 1 changeset (subdir should be skipped), got %d", len(changes))
+	}
+}
+
+func TestListChangesetsParseError(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte("no frontmatter"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := listChangesets(dir)
+	if err == nil {
+		t.Fatal("expected error for invalid changeset file, got nil")
+	}
+}
+
+func TestBumpPriorityDefault(t *testing.T) {
+	result := bumpPriority(bumpType("unknown"))
+	if result != 0 {
+		t.Errorf("expected priority 0 for unknown bump type, got %d", result)
+	}
+}

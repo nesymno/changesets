@@ -10,6 +10,9 @@ build VERSION="dev":
 test:
     go test ./... -v
 
+test_cover:
+    go test ./... -v -coverprofile=coverage.txt -covermode=atomic
+
 next:
     go run . next
 

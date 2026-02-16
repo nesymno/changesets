@@ -104,3 +104,38 @@ func TestNewPaths(t *testing.T) {
 		t.Errorf("expected changes /project/.changesets/changes, got %s", p.changes)
 	}
 }
+
+func TestFindRoot(t *testing.T) {
+	root, err := findRoot()
+	if err != nil {
+		t.Fatalf("findRoot failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
+		t.Errorf("go.mod not found in returned root %s", root)
+	}
+}
+
+func TestFindRootNotFound(t *testing.T) {
+	dir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(origDir)
+
+	_, err = findRoot()
+	if err == nil {
+		t.Fatal("expected error when no go.mod in parent chain, got nil")
+	}
+}
+
+func TestSaveConfigWriteError(t *testing.T) {
+	err := saveConfig("/nonexistent/deeply/nested/config.json", &config{Version: "v1.0.0"})
+	if err == nil {
+		t.Fatal("expected error writing to nonexistent path, got nil")
+	}
+}

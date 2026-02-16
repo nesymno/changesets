@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,29 +15,33 @@ import (
 var version = "dev"
 
 func main() {
-	if len(os.Args) < 2 {
+	os.Exit(run(os.Args, os.Stdin))
+}
+
+func run(args []string, stdin io.Reader) int {
+	if len(args) < 2 {
 		printUsage()
-		os.Exit(1)
+		return 1
 	}
 
-	switch os.Args[1] {
+	switch args[1] {
 	case "help", "--help", "-h":
 		printUsage()
-		return
+		return 0
 	case "version", "--version", "-v":
 		fmt.Println(version)
-		return
+		return 0
 	}
 
 	p, err := resolvePaths()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\nAre you inside a Go project?\n", err)
-		os.Exit(1)
+		return 1
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(stdin)
 
-	switch os.Args[1] {
+	switch args[1] {
 	case "init":
 		err = cmdInit(p, scanner)
 	case "add":
@@ -46,15 +51,17 @@ func main() {
 	case "release":
 		err = cmdRelease(p)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", args[1])
 		printUsage()
-		os.Exit(1)
+		return 1
 	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
+		return 1
 	}
+
+	return 0
 }
 
 func printUsage() {
