@@ -21,9 +21,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies
         run: apk add --no-cache git curl bash gcc musl-dev gnupg
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Run tests
         run: CGO_ENABLED=1 go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...

@@ -537,6 +537,9 @@ func TestCmdAddModuleNameError(t *testing.T) {
 }
 
 func TestCmdAddWriteError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping: permission-based test requires non-root user")
+	}
 	p := setupProject(t, "v0.0.0")
 	os.Chmod(p.changes, 0555)
 	defer os.Chmod(p.changes, 0755)
