@@ -1,23 +1,66 @@
 package main
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
+func initTestRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+
+	git("init")
+	git("config", "user.email", "nesymno@gmail.com")
+	git("config", "user.name", "nesymno")
+
+	return dir
+}
+
 func TestGetFileCommitSHA(t *testing.T) {
-	sha, err := getFileCommitSHA("go.mod")
+	dir := initTestRepo(t)
+
+	os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("hello"), 0644)
+	exec.Command("git", "-C", dir, "add", "tracked.txt").Run()
+	exec.Command("git", "-C", dir, "commit", "-m", "add tracked file").Run()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origDir)
+
+	sha, err := getFileCommitSHA("tracked.txt")
 	if err != nil {
 		t.Fatalf("getFileCommitSHA failed: %v", err)
 	}
 
 	if sha == "" {
-		t.Error("expected non-empty SHA for tracked file go.mod")
+		t.Error("expected non-empty SHA for tracked file")
 	}
 }
 
 func TestGetFileCommitSHAUntracked(t *testing.T) {
-	// Use a filename that doesn't exist in git history but is inside the repo.
-	sha, err := getFileCommitSHA("nonexistent_file_that_was_never_committed.txt")
+	dir := initTestRepo(t)
+
+	os.WriteFile(filepath.Join(dir, "dummy.txt"), []byte("x"), 0644)
+	exec.Command("git", "-C", dir, "add", "dummy.txt").Run()
+	exec.Command("git", "-C", dir, "commit", "-m", "initial").Run()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origDir)
+
+	sha, err := getFileCommitSHA("nonexistent.txt")
 	if err != nil {
 		t.Fatalf("getFileCommitSHA failed: %v", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -814,8 +815,18 @@ func TestBuildChangelogSectionEmptyGroups(t *testing.T) {
 }
 
 func TestBuildChangelogSectionWithSHA(t *testing.T) {
+	dir := initTestRepo(t)
+
+	os.WriteFile(filepath.Join(dir, "change.md"), []byte("hello"), 0644)
+	exec.Command("git", "-C", dir, "add", "change.md").Run()
+	exec.Command("git", "-C", dir, "commit", "-m", "add change").Run()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origDir)
+
 	changes := []*changeset{
-		{filepath: "go.mod", bump: patch, summary: "Updated deps"},
+		{filepath: "change.md", bump: patch, summary: "Updated deps"},
 	}
 
 	result := buildChangelogSection("v1.0.1", changes)
