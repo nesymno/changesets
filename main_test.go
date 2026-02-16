@@ -951,6 +951,9 @@ func TestCleanupChangesInvalidDir(t *testing.T) {
 }
 
 func TestCleanupChangesRemoveError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping: permission-based test requires non-root user")
+	}
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "test.md"), []byte("x"), 0644)
 	os.Chmod(dir, 0555)
@@ -963,6 +966,9 @@ func TestCleanupChangesRemoveError(t *testing.T) {
 }
 
 func TestCmdInitMkdirError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping: permission-based test requires non-root user")
+	}
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module test\n"), 0644)
 	p := newPaths(dir)

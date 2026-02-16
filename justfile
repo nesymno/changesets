@@ -25,4 +25,4 @@ release:
     git tag "${version}"
     git push origin main --tags
     notes=$(awk '/^## /{if(c++){exit}else{next}} c' CHANGELOG.md)
-    gh release create "${version}" --title "${version}" --notes "${notes}"
+    gh release create "${version}" --title "${version}" --notes "${notes}" --draft
