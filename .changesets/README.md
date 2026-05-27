@@ -8,4 +8,4 @@ Run `changesets add` to create a new changeset file describing your change.
 
 ## How to release
 
-Run `changesets release` to bump the version, update CHANGELOG.md, and clean up changeset files.
+Run `changesets release` to bump the version, update [CHANGELOG.md](https://github.com/nesymno/changesets/CHANGELOG.md), and clean up changeset files.

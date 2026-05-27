@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// bumpType represents a semantic version bump level.
 type bumpType string
 
 const (
@@ -16,12 +15,11 @@ const (
 	major bumpType = "major"
 )
 
-// changeset represents a parsed changeset file.
 type changeset struct {
-	filepath string   // absolute path to the .md file
-	repoName string   // repo name from frontmatter
-	bump     bumpType // patch, minor, or major
-	summary  string   // the message body
+	filePath string
+	repoName string
+	summary  string
+	bump     bumpType
 }
 
 // parseFile reads and parses a changeset markdown file.
@@ -46,40 +44,37 @@ func parseChangeset(content, filePath string) (*changeset, error) {
 	content = strings.TrimSpace(content)
 
 	if !strings.HasPrefix(content, "---") {
-		return nil, fmt.Errorf("changeset missing opening frontmatter delimiter (---)")
+		return nil, fmt.Errorf("changeset missing opening delimiter (---)")
 	}
 
-	// Remove the leading "---" and require the closing "---" on its own line.
-	// This prevents a horizontal rule in the body from being misinterpreted.
 	rest := content[3:]
-	idx := strings.Index(rest, "\n---")
-	if idx < 0 {
-		return nil, fmt.Errorf("changeset missing closing frontmatter delimiter (---)")
+	repoData, changesContent, found := strings.Cut(rest, "\n---")
+	if !found {
+		return nil, fmt.Errorf("changeset missing closing delimiter (---)")
 	}
 
-	frontmatter := strings.TrimSpace(rest[:idx])
-	body := strings.TrimSpace(rest[idx+4:])
+	repoData = strings.TrimSpace(repoData)
+	changesContent = strings.TrimSpace(changesContent)
 
-	// Parse frontmatter: "repo-name: bump-type"
-	parts := strings.SplitN(frontmatter, ":", 2)
+	parts := strings.SplitN(repoData, ":", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid frontmatter format, expected 'name: bump-type'")
+		return nil, fmt.Errorf("invalid changeset format, expected 'repo-name: bump-type'")
 	}
 
 	repoName := strings.TrimSpace(parts[0])
-	bumpStr := strings.TrimSpace(parts[1])
+	bt := bumpType(strings.TrimSpace(parts[1]))
 
-	b, err := parseBumpType(bumpStr)
-	if err != nil {
-		return nil, err
+	switch bt {
+	case patch, minor, major:
+		return &changeset{
+			filePath: filePath,
+			repoName: repoName,
+			bump:     bt,
+			summary:  changesContent,
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid bump type %q, expected patch, minor, or major", bt)
 	}
-
-	return &changeset{
-		filepath: filePath,
-		repoName: repoName,
-		bump:     b,
-		summary:  body,
-	}, nil
 }
 
 // changesetContent produces the markdown content for a changeset file.
@@ -126,15 +121,6 @@ func highestBump(changes []*changeset) bumpType {
 	}
 
 	return highest
-}
-
-func parseBumpType(s string) (bumpType, error) {
-	switch bumpType(s) {
-	case patch, minor, major:
-		return bumpType(s), nil
-	default:
-		return "", fmt.Errorf("invalid bump type %q, expected patch, minor, or major", s)
-	}
 }
 
 func bumpPriority(b bumpType) int {

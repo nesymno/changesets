@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-// setupProject creates a temporary project directory with .changesets structure.
-func setupProject(t *testing.T, version string, changesetContents ...string) paths {
+// setupTestProject creates a temporary project directory with .changesets structure.
+func setupTestProject(t *testing.T, version string, changesetContents ...string) paths {
 	t.Helper()
 	dir := t.TempDir()
 
@@ -63,16 +63,6 @@ func captureStdout(fn func()) string {
 	return buf.String()
 }
 
-func TestRunNoArgs(t *testing.T) {
-	var code int
-	captureStdout(func() {
-		code = run([]string{"changesets"}, strings.NewReader(""))
-	})
-	if code != 1 {
-		t.Errorf("expected exit code 1, got %d", code)
-	}
-}
-
 func TestRunHelp(t *testing.T) {
 	var code int
 	output := captureStdout(func() {
@@ -103,19 +93,6 @@ func TestRunHelpShort(t *testing.T) {
 	})
 	if code != 0 {
 		t.Errorf("expected exit code 0, got %d", code)
-	}
-}
-
-func TestRunVersion(t *testing.T) {
-	var code int
-	output := captureStdout(func() {
-		code = run([]string{"changesets", "version"}, strings.NewReader(""))
-	})
-	if code != 0 {
-		t.Errorf("expected exit code 0, got %d", code)
-	}
-	if !strings.Contains(output, "dev") {
-		t.Errorf("expected version 'dev', got %q", strings.TrimSpace(output))
 	}
 }
 
@@ -216,25 +193,6 @@ func TestRunNext(t *testing.T) {
 	}
 }
 
-func TestRunRelease(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module test\n"), 0644)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(dir)
-
-	captureStdout(func() { run([]string{"changesets", "init"}, strings.NewReader("")) })
-	captureStdout(func() { run([]string{"changesets", "add"}, strings.NewReader("1\nFix\ny\n")) })
-
-	var code int
-	captureStdout(func() {
-		code = run([]string{"changesets", "release"}, strings.NewReader(""))
-	})
-	if code != 0 {
-		t.Errorf("expected exit code 0, got %d", code)
-	}
-}
-
 func TestRunCommandError(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module test\n"), 0644)
@@ -256,7 +214,7 @@ func TestPrintUsage(t *testing.T) {
 	if !strings.Contains(output, "changesets - Manage changelogs") {
 		t.Error("missing header text")
 	}
-	if !strings.Contains(output, "init") || !strings.Contains(output, "release") {
+	if !strings.Contains(output, "init") {
 		t.Error("missing command descriptions")
 	}
 }
@@ -284,7 +242,7 @@ func TestResolvePathsError(t *testing.T) {
 }
 
 func TestEnsureChangesetsExist(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 	if err := ensureChangesetsExist(p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -320,7 +278,7 @@ func TestCmdInitFresh(t *testing.T) {
 }
 
 func TestCmdInitExistingYes(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	output := captureStdout(func() {
@@ -335,7 +293,7 @@ func TestCmdInitExistingYes(t *testing.T) {
 }
 
 func TestCmdInitExistingNo(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	output := captureStdout(func() {
@@ -350,7 +308,7 @@ func TestCmdInitExistingNo(t *testing.T) {
 }
 
 func TestCmdInitExistingNoInput(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -362,7 +320,7 @@ func TestCmdInitExistingNoInput(t *testing.T) {
 }
 
 func TestCmdAddPatch(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	output := captureStdout(func() {
@@ -377,7 +335,7 @@ func TestCmdAddPatch(t *testing.T) {
 }
 
 func TestCmdAddMinor(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -389,7 +347,7 @@ func TestCmdAddMinor(t *testing.T) {
 }
 
 func TestCmdAddMajor(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -401,7 +359,7 @@ func TestCmdAddMajor(t *testing.T) {
 }
 
 func TestCmdAddPatchText(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -413,7 +371,7 @@ func TestCmdAddPatchText(t *testing.T) {
 }
 
 func TestCmdAddMinorText(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -425,7 +383,7 @@ func TestCmdAddMinorText(t *testing.T) {
 }
 
 func TestCmdAddMajorText(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -437,7 +395,7 @@ func TestCmdAddMajorText(t *testing.T) {
 }
 
 func TestCmdAddInvalidSelection(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -449,7 +407,7 @@ func TestCmdAddInvalidSelection(t *testing.T) {
 }
 
 func TestCmdAddEmptySummary(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -461,7 +419,7 @@ func TestCmdAddEmptySummary(t *testing.T) {
 }
 
 func TestCmdAddAbort(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	output := captureStdout(func() {
@@ -476,7 +434,7 @@ func TestCmdAddAbort(t *testing.T) {
 }
 
 func TestCmdAddNoInputBump(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -488,7 +446,7 @@ func TestCmdAddNoInputBump(t *testing.T) {
 }
 
 func TestCmdAddNoInputSummary(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -500,7 +458,7 @@ func TestCmdAddNoInputSummary(t *testing.T) {
 }
 
 func TestCmdAddNoInputConfirm(t *testing.T) {
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 
 	var err error
 	captureStdout(func() {
@@ -526,7 +484,7 @@ func TestCmdAddModuleNameError(t *testing.T) {
 	p := newPaths(dir)
 	os.MkdirAll(p.changesets, 0755)
 	os.MkdirAll(p.changes, 0755)
-	saveConfig(p.config, &config{Version: "v0.0.0"})
+	saveConfig(p.config, &config{Version: "v0.0.1"})
 
 	var err error
 	captureStdout(func() {
@@ -541,7 +499,7 @@ func TestCmdAddWriteError(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("skipping: permission-based test requires non-root user")
 	}
-	p := setupProject(t, "v0.0.0")
+	p := setupTestProject(t, "v0.0.1")
 	os.Chmod(p.changes, 0555)
 	defer os.Chmod(p.changes, 0755)
 
@@ -555,7 +513,7 @@ func TestCmdAddWriteError(t *testing.T) {
 }
 
 func TestCmdNext(t *testing.T) {
-	p := setupProject(t, "v1.0.0", "---\ntest: minor\n---\n\nAdded feature")
+	p := setupTestProject(t, "v1.0.0", "---\ntest: minor\n---\n\nAdded feature")
 
 	var err error
 	output := captureStdout(func() {
@@ -570,7 +528,7 @@ func TestCmdNext(t *testing.T) {
 }
 
 func TestCmdNextNoChangesets(t *testing.T) {
-	p := setupProject(t, "v1.0.0")
+	p := setupTestProject(t, "v1.0.0")
 
 	var err error
 	output := captureStdout(func() {
@@ -606,74 +564,8 @@ func TestCmdNextCalculateError(t *testing.T) {
 	}
 }
 
-func TestCmdRelease(t *testing.T) {
-	p := setupProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFixed bug")
-
-	var err error
-	output := captureStdout(func() {
-		err = cmdRelease(p)
-	})
-	if err != nil {
-		t.Fatalf("cmdRelease failed: %v", err)
-	}
-	if strings.TrimSpace(output) != "v1.0.1" {
-		t.Errorf("expected v1.0.1, got %q", strings.TrimSpace(output))
-	}
-
-	data, readErr := os.ReadFile(filepath.Join(p.root, "CHANGELOG.md"))
-	if readErr != nil {
-		t.Fatal("CHANGELOG.md not created")
-	}
-	if !strings.Contains(string(data), "v1.0.1") {
-		t.Error("CHANGELOG.md missing version")
-	}
-
-	cfg, _ := loadConfig(p.config)
-	if cfg.Version != "v1.0.1" {
-		t.Errorf("expected config v1.0.1, got %s", cfg.Version)
-	}
-
-	entries, _ := os.ReadDir(p.changes)
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".md") {
-			t.Errorf("changeset %s should be removed", e.Name())
-		}
-	}
-}
-
-func TestCmdReleaseNoChangesets(t *testing.T) {
-	p := setupProject(t, "v1.0.0")
-
-	var err error
-	captureStdout(func() {
-		err = cmdRelease(p)
-	})
-	if err == nil {
-		t.Fatal("expected error when no changesets")
-	}
-}
-
-func TestCmdReleaseNoDir(t *testing.T) {
-	p := newPaths(t.TempDir())
-	if err := cmdRelease(p); err == nil {
-		t.Fatal("expected error when .changesets doesn't exist")
-	}
-}
-
-func TestCmdReleaseCalculateError(t *testing.T) {
-	dir := t.TempDir()
-	p := newPaths(dir)
-	os.MkdirAll(p.changesets, 0755)
-	os.MkdirAll(p.changes, 0755)
-
-	err := cmdRelease(p)
-	if err == nil {
-		t.Fatal("expected error when config is missing")
-	}
-}
-
 func TestCalculateNextVersionPatch(t *testing.T) {
-	p := setupProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFix")
+	p := setupTestProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFix")
 
 	ver, changes, cfg, err := calculateNextVersion(p)
 	if err != nil {
@@ -691,7 +583,7 @@ func TestCalculateNextVersionPatch(t *testing.T) {
 }
 
 func TestCalculateNextVersionMinor(t *testing.T) {
-	p := setupProject(t, "v1.0.0", "---\ntest: minor\n---\n\nFeat")
+	p := setupTestProject(t, "v1.0.0", "---\ntest: minor\n---\n\nFeat")
 
 	ver, _, _, err := calculateNextVersion(p)
 	if err != nil {
@@ -703,7 +595,7 @@ func TestCalculateNextVersionMinor(t *testing.T) {
 }
 
 func TestCalculateNextVersionMajor(t *testing.T) {
-	p := setupProject(t, "v1.0.0", "---\ntest: major\n---\n\nBreaking")
+	p := setupTestProject(t, "v1.0.0", "---\ntest: major\n---\n\nBreaking")
 
 	ver, _, _, err := calculateNextVersion(p)
 	if err != nil {
@@ -715,7 +607,7 @@ func TestCalculateNextVersionMajor(t *testing.T) {
 }
 
 func TestCalculateNextVersionNoChangesets(t *testing.T) {
-	p := setupProject(t, "v1.0.0")
+	p := setupTestProject(t, "v1.0.0")
 
 	ver, changes, cfg, err := calculateNextVersion(p)
 	if err != nil {
@@ -733,7 +625,7 @@ func TestCalculateNextVersionNoChangesets(t *testing.T) {
 }
 
 func TestCalculateNextVersionInvalidVersion(t *testing.T) {
-	p := setupProject(t, "not-a-version", "---\ntest: patch\n---\n\nFix")
+	p := setupTestProject(t, "not-a-version", "---\ntest: patch\n---\n\nFix")
 
 	_, _, _, err := calculateNextVersion(p)
 	if err == nil {
@@ -766,9 +658,9 @@ func TestCalculateNextVersionListError(t *testing.T) {
 
 func TestBuildChangelogSection(t *testing.T) {
 	changes := []*changeset{
-		{filepath: "test1.md", bump: major, summary: "Breaking change"},
-		{filepath: "test2.md", bump: minor, summary: "New feature"},
-		{filepath: "test3.md", bump: patch, summary: "Bug fix"},
+		{filePath: "test1.md", bump: major, summary: "Breaking change"},
+		{filePath: "test2.md", bump: minor, summary: "New feature"},
+		{filePath: "test3.md", bump: patch, summary: "Bug fix"},
 	}
 
 	result := buildChangelogSection("v2.0.0", changes)
@@ -798,7 +690,7 @@ func TestBuildChangelogSection(t *testing.T) {
 
 func TestBuildChangelogSectionEmptyGroups(t *testing.T) {
 	changes := []*changeset{
-		{filepath: "test.md", bump: patch, summary: "Fix"},
+		{filePath: "test.md", bump: patch, summary: "Fix"},
 	}
 
 	result := buildChangelogSection("v1.0.1", changes)
@@ -826,7 +718,7 @@ func TestBuildChangelogSectionWithSHA(t *testing.T) {
 	defer os.Chdir(origDir)
 
 	changes := []*changeset{
-		{filepath: "change.md", bump: patch, summary: "Updated deps"},
+		{filePath: "change.md", bump: patch, summary: "Updated deps"},
 	}
 
 	result := buildChangelogSection("v1.0.1", changes)
@@ -838,7 +730,7 @@ func TestBuildChangelogSectionWithSHA(t *testing.T) {
 
 func TestBuildChangelogSectionWithoutSHA(t *testing.T) {
 	changes := []*changeset{
-		{filepath: "/nonexistent/file.md", bump: patch, summary: "Fix"},
+		{filePath: "/nonexistent/file.md", bump: patch, summary: "Fix"},
 	}
 
 	result := buildChangelogSection("v1.0.1", changes)

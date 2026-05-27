@@ -30,7 +30,7 @@ func TestLoadInvalidJSON(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	if err := os.WriteFile(path, []byte("{invalid}"), 0644); err != nil {
-		t.Fatalf("failed to write test file: %v", err)
+		t.Fatalf("write test file: %v", err)
 	}
 
 	_, err := loadConfig(path)
@@ -79,7 +79,7 @@ func TestModuleNameNoDirective(t *testing.T) {
 	gomod := filepath.Join(dir, "go.mod")
 
 	if err := os.WriteFile(gomod, []byte("go 1.25.0\n"), 0644); err != nil {
-		t.Fatalf("failed to write go.mod: %v", err)
+		t.Fatalf("write go.mod: %v", err)
 	}
 
 	_, err := moduleName(dir)

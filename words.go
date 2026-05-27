@@ -58,7 +58,7 @@ var nouns = []string{
 // generateSlug creates a random slug in the format "adj-adj-noun".
 // It checks for collisions with existing files in changesDir.
 func generateSlug(dir string) (string, error) {
-	for attempts := 0; attempts < 100; attempts++ {
+	for range 100 {
 		adj1, err := randomElement(adjectives)
 		if err != nil {
 			return "", err
@@ -81,18 +81,17 @@ func generateSlug(dir string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique slug after 100 attempts")
+	return "", fmt.Errorf("generate unique slug after 100 attempts")
 }
 
 func randomElement(slice []string) (string, error) {
 	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
 	if err != nil {
-		return "", fmt.Errorf("failed to generate random number: %w", err)
+		return "", fmt.Errorf("generate random number: %w", err)
 	}
 	return slice[n.Int64()], nil
 }
 
-// slugToFilename converts a slug to a markdown filename.
 func slugToFilename(slug string) string {
-	return slug + ".md"
+	return fmt.Sprintf("%s.md", slug)
 }

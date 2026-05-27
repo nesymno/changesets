@@ -54,7 +54,6 @@ func findRoot() (string, error) {
 	}
 }
 
-// newPaths returns all changesets-related paths relative to the given root.
 func newPaths(root string) paths {
 	cs := filepath.Join(root, changesetsDir)
 	return paths{
@@ -71,12 +70,12 @@ func newPaths(root string) paths {
 func loadConfig(configPath string) (*config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config: %w", err)
+		return nil, fmt.Errorf("read config: %w", err)
 	}
 
 	var cfg config
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
 	return &cfg, nil
@@ -86,13 +85,13 @@ func loadConfig(configPath string) (*config, error) {
 func saveConfig(configPath string, cfg *config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return fmt.Errorf("marshal config: %w", err)
 	}
 
 	data = append(data, '\n')
 
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
+		return fmt.Errorf("write config: %w", err)
 	}
 
 	return nil

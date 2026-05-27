@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.0 - 2026-05-27
+
+### Minor Changes
+
+- Refactored code and tests
+
 ## v0.1.0 - 2026-02-17
 
 ### Minor Changes

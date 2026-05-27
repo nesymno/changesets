@@ -1,10 +1,10 @@
 # Run the CLI with optional arguments: just run init, add, next, release
 run *ARGS:
-    go run . {{ARGS}}
+    go run . {{ ARGS }}
 
 # Build the binary with version from config.json
 build VERSION="dev":
-    go build -ldflags "-X main.version={{VERSION}}" -o changesets .
+    go build -ldflags "-X main.version={{ VERSION }}" -o changesets .
 
 # Run all tests
 test:
@@ -19,7 +19,7 @@ next:
 release:
     #!/usr/bin/env bash
     set -euo pipefail
-    version=$(go run . release)
+    version=$(go run . next)
     git add .
     git commit -m "Release ${version}"
     git tag "${version}"
