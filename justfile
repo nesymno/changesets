@@ -22,7 +22,9 @@ release:
     version=$(go run . next)
     git add .
     git commit -m "Release ${version}"
-    git tag "${version}"
+    if [[ "$(git tag -l ${version})" == "" ]]; then
+        git tag "${version}"
+    fi
     git push origin main --tags
     notes=$(awk '/^## /{if(c++){exit}else{next}} c' CHANGELOG.md)
     gh release create "${version}" --title "${version}" --notes "${notes}" --draft
