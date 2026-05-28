@@ -17,4 +17,4 @@ next:
     go run . next
 
 release:
-    bash scripts/release.sh
+    bash release.sh
