@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.1 - 2026-05-28
+
+### Patch Changes
+
+- Fix deps
+
 ## v0.2.0 - 2026-05-27
 
 ### Minor Changes

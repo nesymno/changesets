@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,21 +13,18 @@ import (
 	semver "github.com/Masterminds/semver/v3"
 )
 
-var version = "dev"
+const startVersion = "v0.0.0"
 
 func resolvedVersion() string {
-	if version != "dev" {
-		return version
-	}
-
 	p, err := resolvePaths()
 	if err != nil {
-		return version
+		return startVersion
 	}
 	cfg, err := loadConfig(p.config)
 	if err != nil {
-		return version
+		return startVersion
 	}
+
 	return cfg.Version
 }
 
@@ -55,7 +53,7 @@ func run(args []string, stdin io.Reader) int {
 		return 1
 	}
 
-	scanner := bufio.NewScanner(stdin)
+	scanner := newLineScanner(stdin)
 
 	switch args[1] {
 	case "init":
@@ -64,12 +62,19 @@ func run(args []string, stdin io.Reader) int {
 		err = cmdAdd(p, scanner)
 	case "next":
 		err = cmdNext(p)
+	case "release":
+		err = cmdRelease(p)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", args[1])
 		printUsage()
 		return 1
 	}
 	if err != nil {
+		if errors.Is(err, ErrNoChangesets) {
+			fmt.Fprint(os.Stderr, err)
+			return 2
+		}
+
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		return 1
 	}
@@ -87,20 +92,45 @@ Commands:
   init        Initialize .changesets directory
   add         Create a new changeset
   next        Calculate and print the next version
-  version     Print the CLI version
+  release     Update CHANGELOG, bump version, and clean up changesets
+  version     Show the CLI version
 `)
 }
 
-func resolvePaths() (paths, error) {
+func resolvePaths() (config, error) {
 	root, err := findRoot()
 	if err != nil {
-		return paths{}, err
+		return config{}, err
 	}
 
-	return newPaths(root), nil
+	return newConfig(root), nil
 }
 
-func cmdInit(p paths, scanner *bufio.Scanner) error {
+// lineScanner is the input interface used by interactive commands.
+// *bufio.Scanner satisfies it directly, so tests need no changes.
+type lineScanner interface {
+	Scan() bool
+	Text() string
+}
+
+type readerScanner struct {
+	r    *bufio.Reader
+	line string
+}
+
+func (s *readerScanner) Scan() bool {
+	line, err := s.r.ReadString('\n')
+	s.line = strings.TrimRight(line, "\r\n")
+	return len(line) > 0 && (err == nil || err == io.EOF)
+}
+
+func (s *readerScanner) Text() string { return s.line }
+
+func newLineScanner(stdin io.Reader) lineScanner {
+	return &readerScanner{r: bufio.NewReader(stdin)}
+}
+
+func cmdInit(p config, scanner lineScanner) error {
 	if _, err := os.Stat(p.changesets); err == nil {
 		fmt.Print(".changesets already exists. Recreate? (y/n): ")
 		if !scanner.Scan() {
@@ -122,7 +152,7 @@ func cmdInit(p paths, scanner *bufio.Scanner) error {
 		return fmt.Errorf("reate changes directory: %w", err)
 	}
 
-	cfg := &config{Version: "v0.0.1"}
+	cfg := &Config{Version: startVersion}
 	if err := saveConfig(p.config, cfg); err != nil {
 		return err
 	}
@@ -152,7 +182,7 @@ Run ` + "`changesets release`" + ` to bump the version, update [CHANGELOG.md](ht
 }
 
 // cmdAdd interactively creates a new changeset file.
-func cmdAdd(p paths, scanner *bufio.Scanner) error {
+func cmdAdd(p config, scanner lineScanner) error {
 	if err := ensureChangesetsExist(p); err != nil {
 		return err
 	}
@@ -168,7 +198,7 @@ func cmdAdd(p paths, scanner *bufio.Scanner) error {
 	fmt.Println("  3) major")
 	fmt.Print("Select [1/2/3]: ")
 
-	var bump bumpType
+	var bump bump
 	if !scanner.Scan() {
 		return fmt.Errorf("no input received")
 	}
@@ -228,60 +258,110 @@ func cmdAdd(p paths, scanner *bufio.Scanner) error {
 	return nil
 }
 
-// cmdNext calculates and prints the next version.
-func cmdNext(p paths) error {
+var ErrNoChangesets = fmt.Errorf("no changesets found")
+
+// cmdRelease updates CHANGELOG.md, bumps the version in config, and removes processed changesets.
+func cmdRelease(p config) error {
 	if err := ensureChangesetsExist(p); err != nil {
 		return err
 	}
 
-	nextVer, _, _, err := calculateNextVersion(p)
+	ver, err := buildNext(p)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(nextVer)
+	if len(ver.changes) == 0 {
+		return ErrNoChangesets
+	}
+
+	section := buildChangelogSection(ver.version, ver.changes)
+
+	if err := prependChangelog(p.changelog, section); err != nil {
+		return err
+	}
+
+	if err := saveConfig(p.config, ver.config); err != nil {
+		return err
+	}
+
+	if err := cleanupChanges(p.changes); err != nil {
+		return err
+	}
+
+	fmt.Println(ver.version)
 	return nil
 }
 
-// calculateNextVersion reads the current version and all changesets, then computes the next version.
-func calculateNextVersion(p paths) (string, []*changeset, *config, error) {
+// cmdNext calculates and prints the next version.
+func cmdNext(p config) error {
+	if err := ensureChangesetsExist(p); err != nil {
+		return err
+	}
+
+	ver, err := buildNext(p)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(ver.version)
+	return nil
+}
+
+func currentVersion(currentVersion string) (*semver.Version, error) {
+	ver, err := semver.NewVersion(currentVersion)
+	if err != nil {
+		return nil, fmt.Errorf("parse current version %q: %w", currentVersion, err)
+	}
+	return ver, nil
+}
+
+type version struct {
+	version string
+	changes []*changeset
+	config  *Config
+}
+
+// buildNext prepares the version struct by loading config and changesets.
+func buildNext(p config) (version, error) {
+	var ver version
+
 	cfg, err := loadConfig(p.config)
 	if err != nil {
-		return "", nil, nil, err
+		return ver, err
 	}
+	ver.config = cfg
 
 	changes, err := listChangesets(p.changes)
 	if err != nil {
-		return "", nil, nil, err
+		return ver, err
 	}
-
 	if len(changes) == 0 {
-		return cfg.Version, nil, cfg, nil
+		ver.version = cfg.Version
+		return ver, nil
 	}
+	ver.changes = changes
 
-	// Parse current version
-	currentVersion := strings.TrimPrefix(cfg.Version, "v")
-	ver, err := semver.NewVersion(currentVersion)
+	cur, err := currentVersion(cfg.Version)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("parse current version %q: %w", cfg.Version, err)
+		return ver, err
 	}
 
-	// Determine highest bump
 	bump := highestBump(changes)
 
-	// Apply bump
 	var next semver.Version
 	switch bump {
 	case major:
-		next = ver.IncMajor()
+		next = cur.IncMajor()
 	case minor:
-		next = ver.IncMinor()
+		next = cur.IncMinor()
 	case patch:
-		next = ver.IncPatch()
+		next = cur.IncPatch()
 	}
+	ver.version = "v" + next.String()
+	ver.config.Version = ver.version
 
-	nextVerStr := "v" + next.String()
-	return nextVerStr, changes, cfg, nil
+	return ver, nil
 }
 
 // buildChangelogSection produces the markdown section for a release.
@@ -291,7 +371,7 @@ func buildChangelogSection(ver string, changes []*changeset) string {
 	date := time.Now().Format("2006-01-02")
 	fmt.Fprintf(&sb, "## %s - %s\n", ver, date)
 
-	groups := map[bumpType][]*changeset{
+	groups := map[bump][]*changeset{
 		major: {},
 		minor: {},
 		patch: {},
@@ -379,7 +459,7 @@ func cleanupChanges(dir string) error {
 }
 
 // ensureChangesetsExist checks that the .changesets directory exists.
-func ensureChangesetsExist(p paths) error {
+func ensureChangesetsExist(p config) error {
 	if _, err := os.Stat(p.changesets); os.IsNotExist(err) {
 		return fmt.Errorf(".changesets directory not found. Run 'changesets init' first")
 	}

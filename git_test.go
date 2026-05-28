@@ -70,6 +70,26 @@ func TestGetFileCommitSHAUntracked(t *testing.T) {
 	}
 }
 
+func TestGetFileCommitSHAAbsolutePath(t *testing.T) {
+	dir := initTestRepo(t)
+	absPath := filepath.Join(dir, "tracked.txt")
+	os.WriteFile(absPath, []byte("hello"), 0644)
+	exec.Command("git", "-C", dir, "add", "tracked.txt").Run()
+	exec.Command("git", "-C", dir, "commit", "-m", "add tracked file").Run()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(dir)
+	defer os.Chdir(origDir)
+
+	sha, err := getFileCommitSHA(absPath)
+	if err != nil {
+		t.Fatalf("getFileCommitSHA failed: %v", err)
+	}
+	if sha == "" {
+		t.Error("expected non-empty SHA for committed file with absolute path")
+	}
+}
+
 func TestGetFileCommitSHAGitNotFound(t *testing.T) {
 	t.Setenv("PATH", "/nonexistent")
 

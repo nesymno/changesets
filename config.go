@@ -17,19 +17,20 @@ const (
 	gitkeepFile   = ".gitkeep"
 )
 
-// config represents the .changesets/config.json file.
-type config struct {
+// Config represents the .changesets/config.json file.
+type Config struct {
 	Version string `json:"version"`
 }
 
-// paths holds resolved absolute paths for the changesets directory structure.
-type paths struct {
+// config holds resolved absolute config for the changesets directory structure.
+type config struct {
 	root       string // project root (where go.mod lives)
 	changesets string // .changesets/
 	config     string // .changesets/config.json
 	changes    string // .changesets/changes/
 	readme     string // .changesets/README.md
 	gitkeep    string // .changesets/changes/.gitkeep
+	changelog  string // CHANGELOG.md
 }
 
 // findRoot walks up from the current directory to find the project root
@@ -54,26 +55,27 @@ func findRoot() (string, error) {
 	}
 }
 
-func newPaths(root string) paths {
+func newConfig(root string) config {
 	cs := filepath.Join(root, changesetsDir)
-	return paths{
+	return config{
 		root:       root,
 		changesets: cs,
 		config:     filepath.Join(cs, configFile),
 		changes:    filepath.Join(cs, changesDir),
 		readme:     filepath.Join(cs, readmeFile),
 		gitkeep:    filepath.Join(cs, changesDir, gitkeepFile),
+		changelog:  filepath.Join(root, "CHANGELOG.md"),
 	}
 }
 
 // loadConfig reads and parses the config.json file.
-func loadConfig(configPath string) (*config, error) {
+func loadConfig(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
 
-	var cfg config
+	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
@@ -82,7 +84,7 @@ func loadConfig(configPath string) (*config, error) {
 }
 
 // saveConfig writes the config back to disk with indentation.
-func saveConfig(configPath string, cfg *config) error {
+func saveConfig(configPath string, cfg *Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)

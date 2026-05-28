@@ -10,7 +10,7 @@ func TestSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
-	cfg := &config{Version: "v1.2.3"}
+	cfg := &Config{Version: "v1.2.3"}
 	if err := saveConfig(path, cfg); err != nil {
 		t.Fatalf("saveConfig failed: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestModuleNameNoDirective(t *testing.T) {
 }
 
 func TestNewPaths(t *testing.T) {
-	p := newPaths("/project")
+	p := newConfig("/project")
 
 	if p.root != "/project" {
 		t.Errorf("expected root /project, got %s", p.root)
@@ -134,7 +134,7 @@ func TestFindRootNotFound(t *testing.T) {
 }
 
 func TestSaveConfigWriteError(t *testing.T) {
-	err := saveConfig("/nonexistent/deeply/nested/config.json", &config{Version: "v1.0.0"})
+	err := saveConfig("/nonexistent/deeply/nested/config.json", &Config{Version: "v1.0.0"})
 	if err == nil {
 		t.Fatal("expected error writing to nonexistent path, got nil")
 	}

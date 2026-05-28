@@ -7,19 +7,19 @@ import (
 	"strings"
 )
 
-type bumpType string
+type bump string
 
 const (
-	patch bumpType = "patch"
-	minor bumpType = "minor"
-	major bumpType = "major"
+	patch bump = "patch"
+	minor bump = "minor"
+	major bump = "major"
 )
 
 type changeset struct {
 	filePath string
 	repoName string
 	summary  string
-	bump     bumpType
+	bump     bump
 }
 
 // parseFile reads and parses a changeset markdown file.
@@ -62,7 +62,7 @@ func parseChangeset(content, filePath string) (*changeset, error) {
 	}
 
 	repoName := strings.TrimSpace(parts[0])
-	bt := bumpType(strings.TrimSpace(parts[1]))
+	bt := bump(strings.TrimSpace(parts[1]))
 
 	switch bt {
 	case patch, minor, major:
@@ -78,7 +78,7 @@ func parseChangeset(content, filePath string) (*changeset, error) {
 }
 
 // changesetContent produces the markdown content for a changeset file.
-func changesetContent(repoName string, bump bumpType, summary string) string {
+func changesetContent(repoName string, bump bump, summary string) string {
 	return fmt.Sprintf("---\n%s: %s\n---\n\n%s\n", repoName, bump, summary)
 }
 
@@ -112,7 +112,7 @@ func listChangesets(changesDir string) ([]*changeset, error) {
 
 // highestBump returns the highest bump type among changesets.
 // major > minor > patch
-func highestBump(changes []*changeset) bumpType {
+func highestBump(changes []*changeset) bump {
 	highest := patch
 	for _, cs := range changes {
 		if bumpPriority(cs.bump) > bumpPriority(highest) {
@@ -123,7 +123,7 @@ func highestBump(changes []*changeset) bumpType {
 	return highest
 }
 
-func bumpPriority(b bumpType) int {
+func bumpPriority(b bump) int {
 	switch b {
 	case patch:
 		return 1

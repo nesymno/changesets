@@ -1,10 +1,9 @@
-# changesets
+# Changesets - don't worry about changelog for Go projects anymore! 
 
 [![Build](https://github.com/nesymno/changesets/actions/workflows/ci.yml/badge.svg)](https://github.com/nesymno/changesets/actions/workflows/ci.yml)
 [![Tests](https://github.com/nesymno/changesets/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/nesymno/changesets/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/nesymno/changesets/branch/main/graph/badge.svg)](https://codecov.io/gh/nesymno/changesets)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nesymno/changesets)](https://goreportcard.com/report/github.com/nesymno/changesets)
-[![License](https://img.shields.io/github/license/nesymno/changesets)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/nesymno/changesets)](https://github.com/nesymno/changesets/releases/latest)
 
 A simple, lightweight CLI tool for managing changelogs with [semantic versioning](https://semver.org/), inspired by [@changesets/changesets](https://github.com/changesets/changesets) - but built for Go projects.
@@ -95,7 +94,7 @@ A changeset file is created in `.changesets/changes/` with a random human-readab
 .changesets/changes/brave-orange-fox.md
 ```
 
-The file uses a simple frontmatter format:
+The file uses a simple format:
 
 ```markdown
 ---
@@ -144,19 +143,19 @@ The generated changelog entry looks like this:
 
 ## Recommended Workflow
 
-### During development
+### Development
 
 Each time you make a meaningful change, add a changeset to describe it:
 
 ```bash
 changesets add
 git add .changesets/changes/
-git commit -m "Add changeset for feature X"
+git commit -m "Changelog for feature X"
 ```
 
 Changeset files should be committed alongside the code they describe. This way, pull requests carry their own release metadata.
 
-### When releasing
+### Releasing
 
 ```bash
 # Generate changelog and bump version
@@ -171,7 +170,7 @@ git tag "${version}"
 git push origin main --tags
 ```
 
-### CI integration
+### CI Integration
 
 You can use `changesets next` in CI pipelines to determine the upcoming version, or check for pending changesets to gate releases:
 
@@ -183,7 +182,7 @@ changesets next || exit 1
 ## Requirements
 
 - **Go 1.25+** (for building / installing)
-- **Git** (optional) - used to resolve commit SHAs in changelog entries. If git is not installed or the project is not a git repository, the tool still works - changelog entries will simply omit commit SHAs
+- **Git** - used to resolve commit SHAs in changelog entries. If git is not installed or the project is not a git repository, the tool still works - changelog entries will simply omit commit SHAs
 
 ## Contributing
 
@@ -193,9 +192,9 @@ Contributions are welcome! Here's how to get started:
 2. Create a feature branch (`git checkout -b my-feature`)
 3. Make your changes
 4. Add a changeset describing your change (`go run . add`)
-5. Run tests (`just test`)
+5. Run tests (`just test` or `just test_cover`)
 6. Commit and push your branch
-7. Open a Pull Request
+7. Open a [Pull Request](https://github.com/nesymno/changesets/pulls)
 
 Please include a changeset with every PR that affects user-facing behavior.
 

@@ -28,7 +28,7 @@ func TestParse(t *testing.T) {
 func TestParseAllBumpTypes(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected bumpType
+		expected bump
 	}{
 		{"---\nrepo: patch\n---\n\nfix", patch},
 		{"---\nrepo: minor\n---\n\nfeat", minor},
@@ -136,14 +136,14 @@ func TestHighestBumpEmpty(t *testing.T) {
 
 func TestHighestBump(t *testing.T) {
 	tests := []struct {
-		bumps    []bumpType
-		expected bumpType
+		bumps    []bump
+		expected bump
 	}{
-		{[]bumpType{patch}, patch},
-		{[]bumpType{patch, minor}, minor},
-		{[]bumpType{patch, minor, major}, major},
-		{[]bumpType{minor, patch}, minor},
-		{[]bumpType{major, patch}, major},
+		{[]bump{patch}, patch},
+		{[]bump{patch, minor}, minor},
+		{[]bump{patch, minor, major}, major},
+		{[]bump{minor, patch}, minor},
+		{[]bump{major, patch}, major},
 	}
 
 	for _, tt := range tests {
@@ -239,7 +239,7 @@ func TestListChangesetsParseError(t *testing.T) {
 }
 
 func TestBumpPriorityDefault(t *testing.T) {
-	result := bumpPriority(bumpType("unknown"))
+	result := bumpPriority(bump("unknown"))
 	if result != 0 {
 		t.Errorf("expected priority 0 for unknown bump type, got %d", result)
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 // setupTestProject creates a temporary project directory with .changesets structure.
-func setupTestProject(t *testing.T, version string, changesetContents ...string) paths {
+func setupTestProject(t *testing.T, version string, changesetContents ...string) config {
 	t.Helper()
 	dir := t.TempDir()
 
@@ -21,11 +21,11 @@ func setupTestProject(t *testing.T, version string, changesetContents ...string)
 		t.Fatal(err)
 	}
 
-	p := newPaths(dir)
+	p := newConfig(dir)
 	if err := os.MkdirAll(p.changes, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := saveConfig(p.config, &config{Version: version}); err != nil {
+	if err := saveConfig(p.config, &Config{Version: version}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -242,14 +242,14 @@ func TestResolvePathsError(t *testing.T) {
 }
 
 func TestEnsureChangesetsExist(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 	if err := ensureChangesetsExist(p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestEnsureChangesetsExistMissing(t *testing.T) {
-	p := newPaths(t.TempDir())
+	p := newConfig(t.TempDir())
 	if err := ensureChangesetsExist(p); err == nil {
 		t.Fatal("expected error when .changesets missing")
 	}
@@ -258,7 +258,7 @@ func TestEnsureChangesetsExistMissing(t *testing.T) {
 func TestCmdInitFresh(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module test\n"), 0644)
-	p := newPaths(dir)
+	p := newConfig(dir)
 
 	var err error
 	output := captureStdout(func() {
@@ -278,7 +278,7 @@ func TestCmdInitFresh(t *testing.T) {
 }
 
 func TestCmdInitExistingYes(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	output := captureStdout(func() {
@@ -293,7 +293,7 @@ func TestCmdInitExistingYes(t *testing.T) {
 }
 
 func TestCmdInitExistingNo(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	output := captureStdout(func() {
@@ -308,7 +308,7 @@ func TestCmdInitExistingNo(t *testing.T) {
 }
 
 func TestCmdInitExistingNoInput(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -320,7 +320,7 @@ func TestCmdInitExistingNoInput(t *testing.T) {
 }
 
 func TestCmdAddPatch(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	output := captureStdout(func() {
@@ -335,7 +335,7 @@ func TestCmdAddPatch(t *testing.T) {
 }
 
 func TestCmdAddMinor(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -347,7 +347,7 @@ func TestCmdAddMinor(t *testing.T) {
 }
 
 func TestCmdAddMajor(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -359,7 +359,7 @@ func TestCmdAddMajor(t *testing.T) {
 }
 
 func TestCmdAddPatchText(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -371,7 +371,7 @@ func TestCmdAddPatchText(t *testing.T) {
 }
 
 func TestCmdAddMinorText(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -383,7 +383,7 @@ func TestCmdAddMinorText(t *testing.T) {
 }
 
 func TestCmdAddMajorText(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -395,7 +395,7 @@ func TestCmdAddMajorText(t *testing.T) {
 }
 
 func TestCmdAddInvalidSelection(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -407,7 +407,7 @@ func TestCmdAddInvalidSelection(t *testing.T) {
 }
 
 func TestCmdAddEmptySummary(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -419,7 +419,7 @@ func TestCmdAddEmptySummary(t *testing.T) {
 }
 
 func TestCmdAddAbort(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	output := captureStdout(func() {
@@ -434,7 +434,7 @@ func TestCmdAddAbort(t *testing.T) {
 }
 
 func TestCmdAddNoInputBump(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -446,7 +446,7 @@ func TestCmdAddNoInputBump(t *testing.T) {
 }
 
 func TestCmdAddNoInputSummary(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -458,7 +458,7 @@ func TestCmdAddNoInputSummary(t *testing.T) {
 }
 
 func TestCmdAddNoInputConfirm(t *testing.T) {
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 
 	var err error
 	captureStdout(func() {
@@ -470,7 +470,7 @@ func TestCmdAddNoInputConfirm(t *testing.T) {
 }
 
 func TestCmdAddNoChangesetsDir(t *testing.T) {
-	p := newPaths(t.TempDir())
+	p := newConfig(t.TempDir())
 
 	err := cmdAdd(p, newScanner("1\ntest\ny\n"))
 	if err == nil {
@@ -481,10 +481,10 @@ func TestCmdAddNoChangesetsDir(t *testing.T) {
 func TestCmdAddModuleNameError(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("go 1.25.0\n"), 0644)
-	p := newPaths(dir)
+	p := newConfig(dir)
 	os.MkdirAll(p.changesets, 0755)
 	os.MkdirAll(p.changes, 0755)
-	saveConfig(p.config, &config{Version: "v0.0.1"})
+	saveConfig(p.config, &Config{Version: startVersion})
 
 	var err error
 	captureStdout(func() {
@@ -499,7 +499,7 @@ func TestCmdAddWriteError(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("skipping: permission-based test requires non-root user")
 	}
-	p := setupTestProject(t, "v0.0.1")
+	p := setupTestProject(t, startVersion)
 	os.Chmod(p.changes, 0555)
 	defer os.Chmod(p.changes, 0755)
 
@@ -543,7 +543,7 @@ func TestCmdNextNoChangesets(t *testing.T) {
 }
 
 func TestCmdNextNoDir(t *testing.T) {
-	p := newPaths(t.TempDir())
+	p := newConfig(t.TempDir())
 	if err := cmdNext(p); err == nil {
 		t.Fatal("expected error when .changesets doesn't exist")
 	}
@@ -551,7 +551,7 @@ func TestCmdNextNoDir(t *testing.T) {
 
 func TestCmdNextCalculateError(t *testing.T) {
 	dir := t.TempDir()
-	p := newPaths(dir)
+	p := newConfig(dir)
 	os.MkdirAll(p.changesets, 0755)
 	os.MkdirAll(p.changes, 0755)
 
@@ -564,95 +564,295 @@ func TestCmdNextCalculateError(t *testing.T) {
 	}
 }
 
-func TestCalculateNextVersionPatch(t *testing.T) {
-	p := setupTestProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFix")
+func TestCmdRelease(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0",
+		"---\ntest: minor\n---\n\nNew feature",
+		"---\ntest: patch\n---\n\nBug fix",
+	)
 
-	ver, changes, cfg, err := calculateNextVersion(p)
+	var err error
+	output := captureStdout(func() {
+		err = cmdRelease(p)
+	})
 	if err != nil {
-		t.Fatalf("failed: %v", err)
+		t.Fatalf("cmdRelease failed: %v", err)
 	}
-	if ver != "v1.0.1" {
-		t.Errorf("expected v1.0.1, got %s", ver)
+	if !strings.Contains(output, "v1.1.0") {
+		t.Errorf("expected 'v1.1.0', got %q", output)
 	}
-	if len(changes) != 1 {
-		t.Errorf("expected 1 changeset, got %d", len(changes))
+
+	data, readErr := os.ReadFile(p.changelog)
+	if readErr != nil {
+		t.Fatalf("CHANGELOG.md not created: %v", readErr)
 	}
-	if cfg == nil {
-		t.Error("expected non-nil config")
+	content := string(data)
+	if !strings.Contains(content, "## v1.1.0") {
+		t.Error("CHANGELOG missing version header")
+	}
+	if !strings.Contains(content, "New feature") {
+		t.Error("CHANGELOG missing minor summary")
+	}
+	if !strings.Contains(content, "Bug fix") {
+		t.Error("CHANGELOG missing patch summary")
+	}
+
+	cfg, cfgErr := loadConfig(p.config)
+	if cfgErr != nil {
+		t.Fatalf("loadConfig: %v", cfgErr)
+	}
+	if cfg.Version != "v1.1.0" {
+		t.Errorf("expected config version v1.1.0, got %s", cfg.Version)
+	}
+
+	remaining, listErr := listChangesets(p.changes)
+	if listErr != nil {
+		t.Fatalf("listChangesets: %v", listErr)
+	}
+	if len(remaining) != 0 {
+		t.Errorf("expected changesets cleaned up, got %d remaining", len(remaining))
 	}
 }
 
-func TestCalculateNextVersionMinor(t *testing.T) {
-	p := setupTestProject(t, "v1.0.0", "---\ntest: minor\n---\n\nFeat")
-
-	ver, _, _, err := calculateNextVersion(p)
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
-	if ver != "v1.1.0" {
-		t.Errorf("expected v1.1.0, got %s", ver)
-	}
-}
-
-func TestCalculateNextVersionMajor(t *testing.T) {
-	p := setupTestProject(t, "v1.0.0", "---\ntest: major\n---\n\nBreaking")
-
-	ver, _, _, err := calculateNextVersion(p)
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
-	if ver != "v2.0.0" {
-		t.Errorf("expected v2.0.0, got %s", ver)
-	}
-}
-
-func TestCalculateNextVersionNoChangesets(t *testing.T) {
+func TestCmdReleaseNoChangesets(t *testing.T) {
 	p := setupTestProject(t, "v1.0.0")
 
-	ver, changes, cfg, err := calculateNextVersion(p)
+	captureStdout(func() {})
+	err := cmdRelease(p)
+	if err == nil {
+		t.Fatal("expected error when no changesets")
+	}
+}
+
+func TestCmdReleaseNoDir(t *testing.T) {
+	p := newConfig(t.TempDir())
+	if err := cmdRelease(p); err == nil {
+		t.Fatal("expected error when .changesets doesn't exist")
+	}
+}
+
+func TestCmdReleasePrependsToExistingChangelog(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFix")
+	existing := "# Changelog\n\n## v1.0.0 - 2026-01-01\n\n### Patch Changes\n\n- Old fix\n"
+	os.WriteFile(p.changelog, []byte(existing), 0644)
+
+	captureStdout(func() { cmdRelease(p) })
+
+	data, _ := os.ReadFile(p.changelog)
+	content := string(data)
+	if strings.Index(content, "v1.0.1") >= strings.Index(content, "v1.0.0") {
+		t.Error("new version should appear before old version")
+	}
+}
+
+func TestBuildNextPatch(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0", "---\ntest: patch\n---\n\nFix")
+
+	ver, err := buildNext(p)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	if ver != "v1.0.0" {
-		t.Errorf("expected v1.0.0, got %s", ver)
+	if ver.version != "v1.0.1" {
+		t.Errorf("expected v1.0.1, got %s", ver.version)
 	}
-	if len(changes) != 0 {
-		t.Errorf("expected 0 changesets, got %d", len(changes))
+	if len(ver.changes) != 1 {
+		t.Errorf("expected 1 changeset, got %d", len(ver.changes))
 	}
-	if cfg == nil {
+	if ver.config == nil {
 		t.Error("expected non-nil config")
 	}
 }
 
-func TestCalculateNextVersionInvalidVersion(t *testing.T) {
+func TestBuildNextMinor(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0", "---\ntest: minor\n---\n\nFeat")
+
+	ver, err := buildNext(p)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if ver.version != "v1.1.0" {
+		t.Errorf("expected v1.1.0, got %s", ver.version)
+	}
+}
+
+func TestBuildNextMajor(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0", "---\ntest: major\n---\n\nBreaking")
+
+	ver, err := buildNext(p)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if ver.version != "v2.0.0" {
+		t.Errorf("expected v2.0.0, got %s", ver.version)
+	}
+}
+
+func TestBuildNextNoChangesets(t *testing.T) {
+	p := setupTestProject(t, "v1.0.0")
+
+	ver, err := buildNext(p)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if ver.version != "v1.0.0" {
+		t.Errorf("expected v1.0.0, got %s", ver.version)
+	}
+	if len(ver.changes) != 0 {
+		t.Errorf("expected 0 changesets, got %d", len(ver.changes))
+	}
+	if ver.config == nil {
+		t.Error("expected non-nil config")
+	}
+}
+
+func TestBuildNextInvalidVersion(t *testing.T) {
 	p := setupTestProject(t, "not-a-version", "---\ntest: patch\n---\n\nFix")
 
-	_, _, _, err := calculateNextVersion(p)
+	_, err := buildNext(p)
 	if err == nil {
 		t.Fatal("expected error for invalid version")
 	}
 }
 
-func TestCalculateNextVersionConfigMissing(t *testing.T) {
+func TestBuildNextConfigMissing(t *testing.T) {
 	dir := t.TempDir()
-	p := newPaths(dir)
+	p := newConfig(dir)
 	os.MkdirAll(p.changes, 0755)
 
-	_, _, _, err := calculateNextVersion(p)
+	_, err := buildNext(p)
 	if err == nil {
 		t.Fatal("expected error when config missing")
 	}
 }
 
-func TestCalculateNextVersionListError(t *testing.T) {
+func TestBuildNextListError(t *testing.T) {
 	dir := t.TempDir()
-	p := newPaths(dir)
+	p := newConfig(dir)
 	os.MkdirAll(p.changesets, 0755)
-	saveConfig(p.config, &config{Version: "v1.0.0"})
+	saveConfig(p.config, &Config{Version: "v1.0.0"})
 
-	_, _, _, err := calculateNextVersion(p)
+	_, err := buildNext(p)
 	if err == nil {
 		t.Fatal("expected error when changes dir missing")
+	}
+}
+
+func TestCmdAddPatchFileContent(t *testing.T) {
+	p := setupTestProject(t, startVersion)
+	captureStdout(func() {
+		if err := cmdAdd(p, newScanner("1\nFix bug\ny\n")); err != nil {
+			t.Fatalf("cmdAdd failed: %v", err)
+		}
+	})
+	changes, err := listChangesets(p.changes)
+	if err != nil {
+		t.Fatalf("listChangesets: %v", err)
+	}
+	if len(changes) != 1 {
+		t.Fatalf("expected 1 changeset, got %d", len(changes))
+	}
+	if changes[0].bump != patch {
+		t.Errorf("expected patch, got %q", changes[0].bump)
+	}
+	if changes[0].summary != "Fix bug" {
+		t.Errorf("expected 'Fix bug', got %q", changes[0].summary)
+	}
+}
+
+func TestCmdAddMinorFileContent(t *testing.T) {
+	p := setupTestProject(t, startVersion)
+	captureStdout(func() {
+		if err := cmdAdd(p, newScanner("2\nNew feature\ny\n")); err != nil {
+			t.Fatalf("cmdAdd failed: %v", err)
+		}
+	})
+	changes, err := listChangesets(p.changes)
+	if err != nil {
+		t.Fatalf("listChangesets: %v", err)
+	}
+	if len(changes) != 1 {
+		t.Fatalf("expected 1 changeset, got %d", len(changes))
+	}
+	if changes[0].bump != minor {
+		t.Errorf("expected minor, got %q", changes[0].bump)
+	}
+	if changes[0].summary != "New feature" {
+		t.Errorf("expected 'New feature', got %q", changes[0].summary)
+	}
+}
+
+func TestCmdAddMajorFileContent(t *testing.T) {
+	p := setupTestProject(t, startVersion)
+	captureStdout(func() {
+		if err := cmdAdd(p, newScanner("3\nBreaking change\ny\n")); err != nil {
+			t.Fatalf("cmdAdd failed: %v", err)
+		}
+	})
+	changes, err := listChangesets(p.changes)
+	if err != nil {
+		t.Fatalf("listChangesets: %v", err)
+	}
+	if len(changes) != 1 {
+		t.Fatalf("expected 1 changeset, got %d", len(changes))
+	}
+	if changes[0].bump != major {
+		t.Errorf("expected major, got %q", changes[0].bump)
+	}
+	if changes[0].summary != "Breaking change" {
+		t.Errorf("expected 'Breaking change', got %q", changes[0].summary)
+	}
+}
+
+func TestBuildChangelogSectionMultiplePatch(t *testing.T) {
+	changes := []*changeset{
+		{filePath: "/nope.md", bump: patch, summary: "Fix one"},
+		{filePath: "/nope2.md", bump: patch, summary: "Fix two"},
+	}
+	result := buildChangelogSection("v1.0.2", changes)
+	if !strings.Contains(result, "Fix one") || !strings.Contains(result, "Fix two") {
+		t.Error("missing patch summaries")
+	}
+	if strings.Contains(result, "Major Changes") || strings.Contains(result, "Minor Changes") {
+		t.Error("unexpected sections present")
+	}
+}
+
+func TestBuildChangelogSectionMultipleMinor(t *testing.T) {
+	changes := []*changeset{
+		{filePath: "/nope.md", bump: minor, summary: "Feat one"},
+		{filePath: "/nope2.md", bump: minor, summary: "Feat two"},
+	}
+	result := buildChangelogSection("v1.1.0", changes)
+	if !strings.Contains(result, "Feat one") || !strings.Contains(result, "Feat two") {
+		t.Error("missing minor summaries")
+	}
+	if strings.Contains(result, "Major Changes") || strings.Contains(result, "Patch Changes") {
+		t.Error("unexpected sections present")
+	}
+}
+
+func TestBuildChangelogSectionMixedMultiple(t *testing.T) {
+	changes := []*changeset{
+		{filePath: "/a.md", bump: major, summary: "Break A"},
+		{filePath: "/b.md", bump: major, summary: "Break B"},
+		{filePath: "/c.md", bump: minor, summary: "Feat C"},
+		{filePath: "/d.md", bump: patch, summary: "Fix D"},
+		{filePath: "/e.md", bump: patch, summary: "Fix E"},
+	}
+	result := buildChangelogSection("v2.0.0", changes)
+
+	majorIdx := strings.Index(result, "### Major Changes")
+	minorIdx := strings.Index(result, "### Minor Changes")
+	patchIdx := strings.Index(result, "### Patch Changes")
+	if majorIdx < 0 || minorIdx < 0 || patchIdx < 0 {
+		t.Fatal("missing one or more change sections")
+	}
+	if !(majorIdx < minorIdx && minorIdx < patchIdx) {
+		t.Error("sections must appear in order: major, minor, patch")
+	}
+	for _, s := range []string{"Break A", "Break B", "Feat C", "Fix D", "Fix E"} {
+		if !strings.Contains(result, s) {
+			t.Errorf("missing summary %q", s)
+		}
 	}
 }
 
@@ -877,7 +1077,7 @@ func TestCmdInitMkdirError(t *testing.T) {
 	}
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module test\n"), 0644)
-	p := newPaths(dir)
+	p := newConfig(dir)
 	os.Chmod(dir, 0555)
 	defer os.Chmod(dir, 0755)
 
