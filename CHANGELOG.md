@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.0 - 2026-05-28
+
+### Minor Changes
+
+- 42701e9: New release.sh script to release package
+- 68aeb06: Refactor code and tests
+
 ## v0.2.1 - 2026-05-28
 
 ### Patch Changes
